@@ -1,14 +1,14 @@
 package main
 
 import (
+	"log"
+	"net/http"
+	"time"
 	"web-base/global"
 	"web-base/internal/model"
 	"web-base/internal/routers"
 	"web-base/pkg/logger"
 	"web-base/pkg/setting"
-	"log"
-	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/natefinch/lumberjack"
@@ -29,10 +29,10 @@ func init() {
 	}
 }
 
-// @title 博客系统
+// @title 脚手架
 // @version 1.0
-// @description 测试开发
-// @termsOfService http://www.baidu.com
+// @description 描述
+// @termsOfService test
 func main() {
 
 	global.Logger.Infof("%s: go-progamming/%s", "abc", "blog")
