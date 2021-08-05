@@ -1,26 +1,26 @@
 package routers
 
 import (
+	"net/http"
+	"time"
 	_ "web-base/docs"
 	"web-base/global"
 	"web-base/internal/middleware"
 	"web-base/internal/routers/api"
 	v1 "web-base/internal/routers/api/v1"
-	"net/http"
-	"time"
 
 	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/swaggo/gin-swagger/swaggerFiles"
+	swaggerFiles "github.com/swaggo/gin-swagger/swaggerFiles"
 
 	"github.com/gin-gonic/gin"
 )
 
 func NewRouter() *gin.Engine {
 	r := gin.New()
-	if global.ServerSetting.RunMode == "debug"{
+	if global.ServerSetting.RunMode == "debug" {
 		r.Use(gin.Logger())
 		r.Use(gin.Recovery())
-	}else {
+	} else {
 		r.Use(middleware.AccessLog())
 	}
 

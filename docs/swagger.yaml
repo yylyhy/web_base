@@ -24,9 +24,9 @@ definitions:
     type: object
 info:
   contact: {}
-  description: 测试开发
-  termsOfService: http://www.baidu.com
-  title: 博客系统
+  description: 描述
+  termsOfService: test
+  title: 脚手架
   version: "1.0"
 paths:
   /api/v1/tags:
@@ -74,22 +74,19 @@ paths:
       - application/json
       parameters:
       - description: 标签名称
-        in: body
+        in: query
         name: name
         required: true
-        schema:
-          type: string
+        type: string
       - description: 状态
-        in: body
+        in: query
         name: state
-        schema:
-          type: integer
+        type: integer
       - description: 创建者
-        in: body
+        in: query
         name: created_by
         required: true
-        schema:
-          type: string
+        type: string
       produces:
       - application/json
       responses:

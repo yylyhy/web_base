@@ -1,10 +1,10 @@
 package app
 
 import (
+	"net/http"
 	"web-base/global"
 	"web-base/pkg/convert"
 	"web-base/pkg/errcode"
-	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,9 +27,9 @@ func NewResponse(ctx *gin.Context) *Response {
 
 func (r *Response) ToResponse(data interface{}) {
 	if data == nil {
-		data = gin.H{}
+		data = gin.H{"code": 200, "msg": ""}
 	}
-	r.Ctx.JSON(http.StatusOK, data)
+	r.Ctx.JSON(http.StatusOK, gin.H{"code": 200, "msg": data})
 }
 
 func (r *Response) ToResponseList(list interface{}, totalRows int) {

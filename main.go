@@ -29,9 +29,9 @@ func init() {
 	}
 }
 
-// @title 脚手架
+// @title web脚手架
 // @version 1.0
-// @description 描述
+// @description go web api 脚手架
 // @termsOfService test
 func main() {
 

@@ -2,8 +2,8 @@ package app
 
 import (
 	"strings"
+	"web-base/global"
 
-	"fmt"
 	"github.com/gin-gonic/gin"
 	ut "github.com/go-playground/universal-translator"
 	val "github.com/go-playground/validator/v10"
@@ -36,12 +36,12 @@ func BindAndValid(c *gin.Context, v interface{}) (bool, ValidErrors) {
 	var errs ValidErrors
 	err := c.ShouldBind(v)
 	if err != nil {
-		fmt.Println("绑定失败")
+		global.Logger.Errorf("绑定参数失败: %v", err)
 		v := c.Value("trans")
 		trans, _ := v.(ut.Translator)
 		verrs, ok := err.(val.ValidationErrors)
 		if !ok {
-			fmt.Println("绑定失败，转换失败")
+			global.Logger.Errorf("中英转换参数信息错误: %v", err)
 			return false, nil
 		}
 		for key, value := range verrs.Translate(trans) {

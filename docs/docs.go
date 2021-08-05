@@ -18,7 +18,7 @@ var doc = `{
     "info": {
         "description": "{{.Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "http://www.baidu.com",
+        "termsOfService": "test",
         "contact": {},
         "version": "{{.Version}}"
     },
@@ -94,30 +94,24 @@ var doc = `{
                 "summary": "新增标签",
                 "parameters": [
                     {
+                        "type": "string",
                         "description": "标签名称",
                         "name": "name",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     },
                     {
+                        "type": "integer",
                         "description": "状态",
                         "name": "state",
-                        "in": "body",
-                        "schema": {
-                            "type": "integer"
-                        }
+                        "in": "query"
                     },
                     {
+                        "type": "string",
                         "description": "创建者",
                         "name": "created_by",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -309,8 +303,8 @@ var SwaggerInfo = swaggerInfo{
 	Host:        "",
 	BasePath:    "",
 	Schemes:     []string{},
-	Title:       "博客系统",
-	Description: "测试开发",
+	Title:       "脚手架",
+	Description: "描述",
 }
 
 type s struct{}
