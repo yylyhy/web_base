@@ -16,8 +16,10 @@ func NewTag() Tag {
 	return Tag{}
 }
 
-func (t Tag) Get(c *gin.Context) gin.H {
-	return gin.H{"message": "success"}
+func (t Tag) Get(c *gin.Context) {
+	response := app.NewResponse(c)
+	response.ToResponse(gin.H{})
+	return
 }
 
 // @Summary 获取多个标签
@@ -33,7 +35,7 @@ func (t Tag) Get(c *gin.Context) gin.H {
 func (t Tag) List(c *gin.Context) {
 	param := service.TagListRequest{}
 	response := app.NewResponse(c)
-	valid, errs := app.BindAndValid(c, param)
+	valid, errs := app.BindAndValid(c, &param)
 	if !valid {
 		global.Logger.Errorf("app.BindAndValid err: %v", errs)
 		response.ToResponse(errcode.InvalidParams.WithDetails(errs.Errors()...))

@@ -1,8 +1,8 @@
 Server:
-  RunMode: debug
+  RunMode: release
   HttpPort: 8000
-  ReadTimeout: 60
-  Writetimeout: 60
+  ReadTimeout: 3
+  Writetimeout: 3
 App:
   DefaultPageSize: 10
   MaxPageSize: 100
@@ -25,8 +25,9 @@ Database:
   TablePrefix: blog_
   Charset: utf8
   ParseTime: true
-  MaxIdleConns: 20
-  MaxOpenConns: 30
+  MaxIdleConns: 2000
+  MaxOpenConns: 3000
+  ConnMaxLifetime: 100
 JWT:
   Secret: abc
   Issuer: blog_abc

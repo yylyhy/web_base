@@ -39,6 +39,7 @@ func main() {
 
 	gin.SetMode(global.ServerSetting.RunMode)
 	router := routers.NewRouter()
+
 	s := &http.Server{
 		Addr:           ":" + global.ServerSetting.HttpPort,
 		Handler:        router,
@@ -73,6 +74,7 @@ func setupSetting() error {
 	global.JWTSetting.Expire *= time.Second
 	global.ServerSetting.ReadTimeout *= time.Second
 	global.ServerSetting.WriteTimeout *= time.Second
+	global.DatabaseSetting.ConnMaxLifetime *= time.Second
 	return nil
 }
 
@@ -88,7 +90,7 @@ func setupDBEngine() error {
 func setupLogger() error {
 	global.Logger = logger.NewLogger(&lumberjack.Logger{
 		Filename:  global.AppSetting.LogSavePath + "/" + global.AppSetting.LogFileName + global.AppSetting.LogFileExt,
-		MaxSize:   600,
+		MaxSize:   6,
 		MaxAge:    10,
 		LocalTime: true,
 	}, "", log.LstdFlags)
