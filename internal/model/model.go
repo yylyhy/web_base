@@ -2,12 +2,14 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"time"
-	"web-base/global"
 	"web-base/pkg/setting"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"gorm.io/gorm/schema"
 )
 
 type Model struct {
@@ -21,92 +23,133 @@ type Model struct {
 }
 
 func NewDBEngine(databaseSetting *setting.DatabaseSettingS) (*gorm.DB, error) {
-	db, err := gorm.Open(databaseSetting.DBType,
-		fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=%s&parseTime=%t&loc=Local",
-			databaseSetting.UserName,
-			databaseSetting.Password,
-			databaseSetting.Host,
-			databaseSetting.DBName,
-			databaseSetting.Charset,
-			databaseSetting.ParseTime,
-		))
+
+	dsn := fmt.Sprintf("%s:%s@tcp(%s)/%s?charset=%s&parseTime=%t&loc=Local",
+		databaseSetting.UserName,
+		databaseSetting.Password,
+		databaseSetting.Host,
+		databaseSetting.DBName,
+		databaseSetting.Charset,
+		databaseSetting.ParseTime,
+	)
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	if global.ServerSetting.RunMode == "debug" {
-		db.LogMode(true)
+	sqlDB, err := db.DB()
+	if err != nil {
+		fmt.Println("open db failed")
+		return nil, err
 	}
 
-	db.SingularTable(true)
+	// if global.ServerSetting.RunMode == "debug" {
+	// 	db.LogMode(true)
+	// }
 
 	// 注册公共回调
-	db.Callback().Create().Replace("gorm:update_time_stamp", updateTimeStampForCreateCallback)
-	db.Callback().Update().Replace("gorm:update_time_stamp", updateTimeStampForUpdateCallback)
-	db.Callback().Delete().Replace("gorm:delete", deleteCallback)
+	db.Callback().Create().Before("gorm:create").Register("gorm:update_time", updateTimeStampForCreateCallback)
+	db.Callback().Update().Before("gorm:update").Register("gorm:update_time", updateTimeStampForUpdateCallback)
 
-	db.DB().SetMaxIdleConns(databaseSetting.MaxIdleConns)
-	db.DB().SetMaxOpenConns(databaseSetting.MaxOpenConns)
-	db.DB().SetConnMaxLifetime(databaseSetting.ConnMaxLifetime)
+	// todo delete bad
+	//db.Callback().Delete().Before("gorm:delete").Register("gorm:delete_time", deleteCallback)
+
+	sqlDB.SetMaxIdleConns(databaseSetting.MaxIdleConns)
+	sqlDB.SetMaxOpenConns(databaseSetting.MaxOpenConns)
+	sqlDB.SetConnMaxLifetime(databaseSetting.ConnMaxLifetime)
 	return db, nil
 }
 
-func updateTimeStampForCreateCallback(scope *gorm.Scope) {
-	if !scope.HasError() {
+func updateTimeStampForCreateCallback(db *gorm.DB) {
+	if db.Error == nil && db.Statement.Schema != nil {
 		nowTime := time.Now().Unix()
-		if createTimeField, ok := scope.FieldByName("CreatedOn"); ok {
-			if createTimeField.IsBlank {
-				_ = createTimeField.Set(nowTime)
+		switch db.Statement.ReflectValue.Kind() {
+		case reflect.Slice, reflect.Array:
+			for i := 0; i < db.Statement.ReflectValue.Len(); i++ {
+				rv := reflect.Indirect(db.Statement.ReflectValue.Index(i))
+				field1 := db.Statement.Schema.FieldsByDBName["created_on"]
+				if field1 != nil {
+					field1.Set(rv, nowTime)
+				}
+				field := db.Statement.Schema.FieldsByDBName["modified_on"]
+				if field != nil {
+					field.Set(rv, nowTime)
+				}
+			}
+		case reflect.Struct:
+			if db.Statement.Schema.FieldsByDBName["created_on"] != nil {
+				db.Statement.SetColumn("created_on", nowTime, true)
+			}
+			if db.Statement.Schema.FieldsByDBName["modified_on"] != nil {
+				db.Statement.SetColumn("modified_on", nowTime)
 			}
 		}
-		if modifyTimeField, ok := scope.FieldByName("ModifiedOn"); ok {
-			if modifyTimeField.IsBlank {
-				_ = modifyTimeField.Set(nowTime)
+
+	}
+}
+
+func updateTimeStampForUpdateCallback(db *gorm.DB) {
+	if db.Error == nil && db.Statement.Schema != nil {
+		db.Statement.SetColumn("modified_on", time.Now().Unix())
+		db.Statement.AddClause(clause.Where{
+			Exprs: []clause.Expression{clause.Eq{Column: "is_del", Value: 0}},
+		})
+	}
+}
+
+func deleteCallback(db *gorm.DB) {
+	if db.Error == nil {
+		if db.Statement.Schema != nil && !db.Statement.Unscoped {
+			for _, c := range db.Statement.Schema.DeleteClauses {
+				db.Statement.AddClause(c)
+			}
+		}
+
+		if db.Statement.SQL.String() == "" {
+			db.Statement.SQL.Grow(100)
+			db.Statement.AddClauseIfNotExists(clause.Delete{})
+
+			if db.Statement.Schema != nil {
+				_, queryValues := schema.GetIdentityFieldValuesMap(db.Statement.ReflectValue, db.Statement.Schema.PrimaryFields)
+				column, values := schema.ToQueryValues(db.Statement.Table, db.Statement.Schema.PrimaryFieldDBNames, queryValues)
+
+				if len(values) > 0 {
+					db.Statement.AddClause(clause.Where{Exprs: []clause.Expression{clause.IN{Column: column, Values: values}}})
+				}
+
+				if db.Statement.ReflectValue.CanAddr() && db.Statement.Dest != db.Statement.Model && db.Statement.Model != nil {
+					_, queryValues = schema.GetIdentityFieldValuesMap(reflect.ValueOf(db.Statement.Model), db.Statement.Schema.PrimaryFields)
+					column, values = schema.ToQueryValues(db.Statement.Table, db.Statement.Schema.PrimaryFieldDBNames, queryValues)
+
+					if len(values) > 0 {
+						db.Statement.AddClause(clause.Where{Exprs: []clause.Expression{clause.IN{Column: column, Values: values}}})
+					}
+				}
+			}
+			fmt.Println("test")
+			db.Statement.AddClauseIfNotExists(clause.From{})
+			db.Statement.Build("DELETE", "FROM", "WHERE")
+		}
+
+		if _, ok := db.Statement.Clauses["WHERE"]; !db.AllowGlobalUpdate && !ok && db.Error == nil {
+			db.AddError(gorm.ErrMissingWhereClause)
+			return
+		}
+
+		if !db.DryRun && db.Error == nil {
+			if !db.Statement.Unscoped {
+				db.Statement.Vars[0] = time.Now().Format("2006-01-02 15:04:05")
+			}
+			result, err := db.Statement.ConnPool.ExecContext(db.Statement.Context, db.Statement.SQL.String(), db.Statement.Vars...)
+
+			if err == nil {
+				db.RowsAffected, _ = result.RowsAffected()
+			} else {
+				db.AddError(err)
 			}
 		}
 	}
-}
-
-func updateTimeStampForUpdateCallback(scope *gorm.Scope) {
-	if _, ok := scope.Get("gorm:update_colum"); !ok {
-		_ = scope.SetColumn("ModifiedOn", time.Now().Unix())
-	}
-}
-
-func deleteCallback(scope *gorm.Scope) {
-	if !scope.HasError() {
-		var extraOption string
-		if str, ok := scope.Get("gorm:delete_option"); ok {
-			extraOption = fmt.Sprint(str)
-		}
-		deletedOnField, hasDeleteOnField := scope.FieldByName("DeletedOn")
-		isDelField, hasIsDelField := scope.FieldByName("IsDel")
-		if !scope.Search.Unscoped && hasDeleteOnField && hasIsDelField {
-			now := time.Now().Unix()
-			scope.Raw(fmt.Sprintf(
-				"UPDATE %v SET %v=%v,%v=%v%v%v",
-				scope.QuotedTableName(),
-				scope.Quote(deletedOnField.DBName),
-				scope.AddToVars(now),
-				scope.Quote(isDelField.DBName),
-				scope.AddToVars(1),
-				addExtraSpaceIfExist(scope.CombinedConditionSql()),
-				addExtraSpaceIfExist(extraOption),
-			)).Exec()
-		} else {
-			scope.Raw(fmt.Sprintf(
-				"DELETE FROM %v%v%v",
-				scope.QuotedTableName(),
-				addExtraSpaceIfExist(scope.CombinedConditionSql()),
-				addExtraSpaceIfExist(extraOption),
-			)).Exec()
-		}
-	}
-}
-
-func addExtraSpaceIfExist(str string) string {
-	if str != "" {
-		return " " + str
-	}
-	return ""
 }

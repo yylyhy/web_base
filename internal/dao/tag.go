@@ -48,6 +48,5 @@ func (d *Dao) UpdateTag(id uint32, name string, state uint8, modifiedBy string) 
 	if name != "" {
 		values["name"] = name
 	}
-
 	return tag.Update(d.engine, values)
 }

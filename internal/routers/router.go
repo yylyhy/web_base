@@ -20,6 +20,7 @@ func NewRouter() *gin.Engine {
 	if global.ServerSetting.RunMode == "debug" {
 		r.Use(gin.Logger())
 		r.Use(gin.Recovery())
+		r.Use(middleware.AccessLog())
 	} else {
 		r.Use(middleware.AccessLog())
 	}

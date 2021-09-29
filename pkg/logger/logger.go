@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -85,6 +86,8 @@ func (l *Logger) WithContext(ctx context.Context) *Logger {
 func (l *Logger) WithCaller(skip int) *Logger {
 	ll := l.clone()
 	pc, file, line, ok := runtime.Caller(skip)
+	slipath := strings.Split(file, "/")
+	file = slipath[len(slipath)-1]
 	if ok {
 		f := runtime.FuncForPC(pc)
 		ll.callers = []string{fmt.Sprintf("%s: %d %s", file, line, f.Name())}
